@@ -6,4 +6,5 @@ detected, a voice detection module activates and listens to commands like:
 - switch light on/off
 - turn music on/off
 - set an alarm / remind me of
+
 and other similar commands
