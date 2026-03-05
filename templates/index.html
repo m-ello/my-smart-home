@@ -9,10 +9,63 @@
 <div class="container">
     <div class="left-wing">
         <div class="left-wing-upper-block-video"></div>
-        <div class="left-wing-lower-block-commands"></div>
+        <div class="left-wing-lower-block-commands">
+            <h2>Detected Commands:</h2>
+            <div id="commands"></div>
+        </div>
     </div>
-    <div class="right-wing"></div>
-</div>
+    <div class="right-wing">
 
+            <div id="status" class="not-listening">Status: Not Listening</div>
+
+            <button onclick="startListening()">Start Listening</button>
+            <button onclick="stopListening()">Stop Listening</button>
+            <button onclick="clearCommands()">Clear Commands</button>
+            <button onclick="loadCommands()">Refresh</button>
+    </div>
+</div>
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+<script>
+    const socket = io();
+
+    socket.on('status',(data)=>{
+       const statusDiv = document.getElementById('status');
+        if (data.listening) {
+            statusDiv.textContent = 'Status: Listening';
+            statusDiv.className = 'listening';
+        } else {
+            statusDiv.textContent = 'Status: Not Listening';
+            statusDiv.className = 'not-listening';
+        }
+    });
+
+    socket.on('command', (data) => {
+        const div = document.getElementById('commands');
+        div.innerHTML = data.commands.map(cmd =>
+            `<div class="command">
+                <strong>${cmd.command}</strong>: ${cmd.text}
+            </div>`
+        ).join('');
+    });
+
+    function startListening() {
+        fetch('/listening/start', {method: 'POST'})
+            .then(r => r.json())
+            .then(data => console.log(data));
+    }
+
+    function stopListening() {
+        fetch('/listening/stop', {method: 'POST'})
+            .then(r => r.json())
+            .then(data => console.log(data));
+    }
+
+    function clearCommands() {
+        fetch('/commands/clear', {method: 'POST'})
+            .then(() => {
+                document.getElementById('commands').innerHTML = '';
+            });
+    }
+    </script>
 </body>
 </html>
