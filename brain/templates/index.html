@@ -2,70 +2,218 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <title>Home</title>
+    <title>MY HOME</title>
 </head>
 <body>
-<div class="container">
-    <div class="left-wing">
-        <div class="left-wing-upper-block-video"></div>
-        <div class="left-wing-lower-block-commands">
-            <h2>Detected Commands:</h2>
-            <div id="commands"></div>
+    <div class="scanline"></div>
+    <div class="page-wrapper">
+    <div class="container">
+
+        <!-- LEFT WING -->
+        <div class="left-wing">
+
+            <!-- Camera feed -->
+            <div class="panel video-panel">
+                <div class="panel-label">VISUAL FEED</div>
+                <div class="feed-wrapper">
+                    <img id="camera-feed"
+                         src="http://10.42.0.245:8000/stream"
+                         alt="Camera feed unavailable"
+                         onerror="this.style.display='none'; document.getElementById('feed-offline').style.display='flex'">
+                    <div id="feed-offline" class="feed-offline">
+                        <span>NO SIGNAL</span>
+                    </div>
+                </div>
+                <div class="occupancy-bar">
+                    <span class="label">PRESENCE</span>
+                    <span id="person-status" class="status-badge inactive">NO SIGNAL</span>
+                </div>
+            </div>
+
+            <!-- Command log -->
+            <div class="panel commands-panel">
+                <div class="panel-label">COMMAND LOG</div>
+                <div id="commands" class="commands-list"></div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT WING -->
+        <div class="right-wing">
+
+            <!-- System status -->
+            <div class="panel status-panel">
+                <div class="panel-label">SYSTEM</div>
+                <div class="status-row">
+                    <span class="label">EAR</span>
+                    <span id="listening-status" class="status-badge inactive">INACTIVE</span>
+                </div>
+                <div class="status-row">
+                    <span class="label">UPLINK</span>
+                    <span id="connection-status" class="status-badge inactive">OFFLINE</span>
+                </div>
+            </div>
+
+            <!-- Device states -->
+            <div class="panel devices-panel">
+                <div class="panel-label">DEVICES</div>
+                <div class="device-grid">
+                    <div class="device" id="device-lights">
+                        <div class="device-icon">💡</div>
+                        <div class="device-name">LIGHTS</div>
+                        <div class="device-state" id="lights-state">OFF</div>
+                    </div>
+                    <div class="device" id="device-fan">
+                        <div class="device-icon">🌀</div>
+                        <div class="device-name">FAN</div>
+                        <div class="device-state" id="fan-state">OFF</div>
+                    </div>
+                    <div class="device" id="device-music">
+                        <div class="device-icon">💿️</div>
+                        <div class="device-name">MUSIC</div>
+                        <div class="device-state" id="music-state">OFF</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="panel controls-panel">
+                <div class="panel-label">CONTROLS</div>
+                <div class="control-grid">
+                    <button class="btn btn-control" onclick="toggleDevice('lights')">💡 LIGHTS</button>
+                    <button class="btn btn-control" onclick="toggleDevice('fan')">🌀 FAN</button>
+                    <button class="btn btn-control" onclick="toggleDevice('music')">💿 MUSIC</button>
+                    <button class="btn btn-control" onclick="clearCommands()">🗑 CLEAR LOG</button>
+                </div>
+                <button class="btn btn-danger btn-shutdown" onclick="shutdownSystem()">⏻ SHUT DOWN</button>
+            </div>
+
+            <!-- Photo -->
+            <div class="panel photo-panel">
+                <img src="{{ url_for('static', filename='photo.jpg') }}" alt="" class="room-photo">
+            </div>
+
         </div>
     </div>
-    <div class="right-wing">
 
-            <div id="status" class="not-listening">Status: Not Listening</div>
-
-            <button onclick="startListening()">Start Listening</button>
-            <button onclick="stopListening()">Stop Listening</button>
-            <button onclick="clearCommands()">Clear Commands</button>
-            <button onclick="loadCommands()">Refresh</button>
-    </div>
-</div>
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 <script>
     const socket = io();
 
-    socket.on('status',(data)=>{
-       const statusDiv = document.getElementById('status');
-        if (data.listening) {
-            statusDiv.textContent = 'Status: Listening';
-            statusDiv.className = 'listening';
-        } else {
-            statusDiv.textContent = 'Status: Not Listening';
-            statusDiv.className = 'not-listening';
-        }
+    // ------------------------------------------------------------------
+    // Connection status
+    // ------------------------------------------------------------------
+
+    socket.on('connect', () => {
+        setbadge('connection-status', 'ONLINE', true);
+        loadState();
+    });
+
+    socket.on('disconnect', () => {
+        setbadge('connection-status', 'OFFLINE', false);
+    });
+
+    // ------------------------------------------------------------------
+    // Socket.IO event handlers
+    // ------------------------------------------------------------------
+
+    socket.on('state', (data) => {
+        renderCommands(data.commands);
+        renderDevices(data.devices);
+    });
+
+    socket.on('person_present', (data) => {
+        setbadge('person-status', data.present ? 'DETECTED' : 'NO SIGNAL', data.present);
+    });
+
+    socket.on('ear_control', (data) => {
+        setbadge('listening-status', data.active ? 'ACTIVE' : 'INACTIVE', data.active);
     });
 
     socket.on('command', (data) => {
-        const div = document.getElementById('commands');
-        div.innerHTML = data.commands.map(cmd =>
-            `<div class="command">
-                <strong>${cmd.command}</strong>: ${cmd.text}
-            </div>`
-        ).join('');
+        renderCommands(data.commands);
     });
 
-    function startListening() {
-        fetch('/listening/start', {method: 'POST'})
-            .then(r => r.json())
-            .then(data => console.log(data));
-    }
+    // ------------------------------------------------------------------
+    // Hydrate on page load
+    // ------------------------------------------------------------------
 
-    function stopListening() {
-        fetch('/listening/stop', {method: 'POST'})
+    function loadState() {
+        fetch('/state')
             .then(r => r.json())
-            .then(data => console.log(data));
-    }
-
-    function clearCommands() {
-        fetch('/commands/clear', {method: 'POST'})
-            .then(() => {
-                document.getElementById('commands').innerHTML = '';
+            .then(data => {
+                renderCommands(data.commands);
+                renderDevices(data.devices);
+                setbadge('person-status', data.person_present ? 'DETECTED' : 'NO SIGNAL', data.person_present);
+                setbadge('listening-status', data.person_present ? 'ACTIVE' : 'INACTIVE', data.person_present);
             });
     }
-    </script>
+
+    // ------------------------------------------------------------------
+    // Render helpers
+    // ------------------------------------------------------------------
+
+    function renderCommands(commands) {
+        const div = document.getElementById('commands');
+        if (!commands || commands.length === 0) {
+            div.innerHTML = '<div class="no-commands">...</div>';
+            return;
+        }
+        div.innerHTML = [...commands].map((cmd, i) => `
+            <div class="command-entry" style="animation-delay: ${i * 0.04}s">
+                <span class="cmd-code">${cmd.command}</span>
+                <span class="cmd-text">"${cmd.text}"</span>
+            </div>
+        `).join('');
+    }
+
+    function renderDevices(devices) {
+        if (!devices) return;
+
+        setDevice('lights', devices.lights ? 'ON' : 'OFF', devices.lights);
+        setDevice('fan',    devices.fan    ? 'ON' : 'OFF', devices.fan);
+
+        const musicState = devices.music || 'OFF';
+        setDevice('music', musicState.toUpperCase(), devices.music !== null);
+    }
+
+    function setDevice(name, label, active) {
+        const el = document.getElementById(`device-${name}`);
+        const stateEl = document.getElementById(`${name}-state`);
+        if (!el || !stateEl) return;
+        stateEl.textContent = label;
+        el.classList.toggle('active', !!active);
+    }
+
+    function setbadge(id, label, active) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = label;
+        el.className = 'status-badge ' + (active ? 'active' : 'inactive');
+    }
+
+    // ------------------------------------------------------------------
+    // Controls
+    // ------------------------------------------------------------------
+
+    function clearCommands() {
+        fetch('/commands/clear', { method: 'POST' })
+            .then(() => renderCommands([]));
+    }
+
+    function toggleDevice(name) {
+        fetch(`/device/toggle/${name}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => renderDevices(data.devices));
+    }
+
+    function shutdownSystem() {
+        if (!confirm('Shut down the system?')) return;
+        fetch('/shutdown', { method: 'POST' });
+    }
+</script>
+    </div><!-- /.page-wrapper -->
 </body>
 </html>

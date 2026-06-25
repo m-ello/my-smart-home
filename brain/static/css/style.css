@@ -1,67 +1,365 @@
+/* ------------------------------------------------------------------
+   Variables
+------------------------------------------------------------------ */
+:root {
+    --bg:         #eff6f5;
+    --panel:      #ffffff;
+    --border:     #d8e6e5;
+
+    --accent:     #0099ff;
+    --accent-dim: #b3e7c9;
+
+    --danger:     #c85a5a;
+
+    --text:       #2f2b28;
+    --text-dim:   #6e665f;
+
+    --font-mono:  monospace;
+    --font-ui:    Arial, sans-serif;
+
+    --radius:     12px;
+}
+
+/* ------------------------------------------------------------------
+   Reset & base
+------------------------------------------------------------------ */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
 body {
-    background-color: #111111;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 18px;
+    min-height: 100vh;
+}
+
+/* ------------------------------------------------------------------
+   Layout
+------------------------------------------------------------------ */
+.page-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 16px;
 }
 
 .container {
-    height: 94vh;
-    width:100%;
     display: flex;
+    gap: 12px;
+    width: fit-content;
+    align-items: stretch;
 }
 
 .left-wing {
     display: flex;
     flex-direction: column;
+    gap: 12px;
+    width: 360px;
+    flex-shrink: 0;
+}
+
+.right-wing {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 390px;
+    flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------
+   Panels
+------------------------------------------------------------------ */
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    position: relative;
+    animation: fadeIn 0.3s ease both;
+}
+
+.panel-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------
+   Video panel
+------------------------------------------------------------------ */
+.video-panel {
+    display: flex;
+    flex-direction: column;
+    height: 340px;
+    flex-shrink: 0;
+}
+
+.feed-wrapper {
+    background: #f3f1ec;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    width: 320px;
+    height: 240px;
+    flex-shrink: 0;
+}
+
+#camera-feed {
+    width: 320px;
+    height: 240px;
+    object-fit: cover;
+    display: block;
+}
+
+.feed-offline {
+    display: none;
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    background: repeating-linear-gradient(
+        45deg,
+        #f4f2ee,
+        #f4f2ee 6px,
+        #eeeae3 6px,
+        #eeeae3 12px
+    );
+}
+
+/* ------------------------------------------------------------------
+   Occupancy
+------------------------------------------------------------------ */
+.occupancy-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+}
+
+.occupancy-value {
+    font-size: 22px;
+    color: var(--accent);
+}
+
+/* ------------------------------------------------------------------
+   Commands panel
+------------------------------------------------------------------ */
+.commands-panel {
+    height: 340px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.commands-list {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.command-entry {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    animation: slideIn 0.2s ease both;
+}
+
+.cmd-code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 110px;
+}
+
+.cmd-text {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------
+   Status panel
+------------------------------------------------------------------ */
+.status-row {
+    display: flex;
     justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.status-row:last-child {
+    border-bottom: none;
+}
+
+.label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.status-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+.status-badge.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.status-badge.inactive {
+    color: var(--text-dim);
+}
+
+/* ------------------------------------------------------------------
+   Devices
+------------------------------------------------------------------ */
+.device-grid {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+}
+
+.device {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    flex: 1;
+    text-align: center;
+}
+
+.device.active {
+    border-color: var(--accent);
+}
+
+.device-icon {
+    font-size: 20px;
+    opacity: 0.6;
+}
+
+.device.active .device-icon {
+    opacity: 1;
+}
+
+.device-name {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+}
+
+.device-state {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+}
+
+.device.active .device-state {
+    color: var(--accent);
+}
+
+/* ------------------------------------------------------------------
+   Buttons
+------------------------------------------------------------------ */
+.btn {
+    width: 100%;
+    padding: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    background: #fff;
+}
+
+.btn:hover {
+    background: #f3f0ea;
+}
+
+.btn-danger {
+    color: var(--danger);
+}
+
+.btn-danger:hover {
+    background: #f9eaea;
+}
+
+.btn-control {
+    text-align: left;
+    padding: 8px 10px;
+}
+
+.control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.btn-shutdown {
+    margin-top: 2px;
+}
+
+/* ------------------------------------------------------------------
+   Photo panel
+------------------------------------------------------------------ */
+.photo-panel {
+    padding: 0;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+}
+
+.room-photo {
     width: 100%;
     height: 100%;
-    margin: 20px;
-    margin-right: 10px;
-    gap:20px;
-}
-
-.left-wing-upper-block-video {
+    object-fit: cover;
     display: block;
-    width: 100%;
-    height: 50%;
-    background-color:#2F2F2F;
-    border-radius: 20px;
+    border-radius: var(--radius);
 }
 
-.left-wing-lower-block-commands {
-    display: block;
-    width: 100%;
-    height: 50%;
-    background-color:#2F2F2F;
-    border-radius: 20px;
+/* ------------------------------------------------------------------
+   Animations
+------------------------------------------------------------------ */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
-.right-wing{
-    width: 100%;
-    height: 100%;
-    background-color:#2F2F2F;
-    border-radius: 20px;
-    margin: 20px;
-    margin-left: 10px
-}
-
-.command { 
-    background: #e8f5e9; 
-    padding: 10px; 
-    margin: 5px; 
-    border-radius: 5px; 
-}
-button { 
-    padding: 10px 20px; 
-    margin: 5px; 
-    font-size: 16px; }
-#status { 
-    font-weight: bold; 
-    padding: 10px; 
-    margin: 10px 0; 
-}
-.listening { 
-    color: green; 
-}
-.not-listening { 
-    color: red; 
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
 }

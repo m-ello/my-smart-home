@@ -1,79 +1,121 @@
-import json
-import queue
-from functools import partial
-from flask import Flask, render_template, request, url_for, jsonify
-from threading import Thread, Lock
-from services.voice_service import VoiceRecognitionService
+import os
+import signal
+import threading
+from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO
+from memory import Memory
+from mind import Mind
+from vision import Vision
 
 app = Flask(__name__)
-socketio = SocketIO(app, async_mode='threading')
+socketio = SocketIO(app, async_mode='threading', cors_allowed_origins='*')
 
-detected_commands = []
-lock = Lock()
+memory = Memory()
+mind = Mind(memory=memory, socketio=socketio)
 
-name = "vadim"
-COMMANDS = {
-    name + " lights on": "LIGHTS_ON",
-    name + " lights off": "LIGHTS_OFF",
-    name + " play music": "MUSIC_ON",
-    name + " pause music": "MUSIC_PAUSE",
-    name + " stop music": "MUSIC_OFF"
-}
+RPI_STREAM_URL = "http://10.42.0.245:8000/stream"
+vision = Vision(stream_url=RPI_STREAM_URL, memory=memory, socketio=socketio)
 
-voice_service = VoiceRecognitionService(COMMANDS, detected_commands, lock, name, socketio)
-voice_thread = None
+_shutting_down = False
 
-@app.route('/',methods=['GET'])
-def main():
+# ------------------------------------------------------------------
+# Receive from RPi (nerve.py)
+# ------------------------------------------------------------------
+
+@socketio.on('command')
+def handle_command(payload):
+    mind.process(payload)
+
+@socketio.on('shutdown_ack')
+def handle_shutdown_ack():
+    """RPi confirmed shutdown — now we can safely exit."""
+    print("[Brain] RPi acknowledged shutdown. Exiting.")
+    _do_exit()
+
+# ------------------------------------------------------------------
+# Routes
+# ------------------------------------------------------------------
+
+@app.route('/')
+def index():
     return render_template('index.html')
 
-
-@app.route('/commands', methods=['GET'])
-def get_commands():
-    """API endpoint to retrieve recognized commands"""
-    with lock:
-        return jsonify({
-            'commands': detected_commands,
-            'count': len(detected_commands)
-        })
-
+@app.route('/state', methods=['GET'])
+def get_state():
+    return jsonify({
+        **memory.snapshot(),
+        'devices': mind.devices
+    })
 
 @app.route('/commands/clear', methods=['POST'])
 def clear_commands():
-    """Clear the command history"""
-    with lock:
-        detected_commands.clear()
+    memory.clear_commands()
+    socketio.emit('command', {'commands': [], 'count': 0})
     return jsonify({'status': 'cleared'})
 
-
-@app.route('/listening/start', methods=['POST'])
-def start_listening():
-    """Start voice recognition"""
-    global voice_thread
-
-    if not voice_service.is_active():
-        voice_service.start()
-        voice_thread = Thread(target=voice_service.voice_recognition_thread, daemon=True)
-        voice_thread.start()
-        return jsonify({'status': 'started'})
-    return jsonify({'status': 'already running'})
-
-
-@app.route('/listening/stop', methods=['POST'])
-def stop_listening():
-    """Stop voice recognition"""
-
-    if voice_service.is_active():
-        voice_service.stop()
-        return jsonify({'status': 'stopped'})
-    return jsonify({'status': 'not running'})
+@app.route('/device/toggle/<name>', methods=['POST'])
+def toggle_device(name):
+    if name == 'lights':
+        mind.devices['lights'] = not mind.devices.get('lights', False)
+    elif name == 'fan':
+        mind.devices['fan'] = not mind.devices.get('fan', False)
+    elif name == 'music':
+        # toggle: None/off → 'on', anything else → None
+        mind.devices['music'] = 'on' if not mind.devices.get('music') else None
+    socketio.emit('state', {'devices': mind.devices, 'commands': memory.get_commands()})
+    return jsonify({'devices': mind.devices})
+ 
+@app.route('/shutdown', methods=['POST'])
+def shutdown_route():
+    threading.Thread(target=_shutdown, daemon=True).start()
+    return jsonify({'status': 'shutting_down'})
 
 
-@app.route('/listening/status', methods=['GET'])
-def listening_status():
-    """Check if voice recognition is active"""
-    return jsonify({'listening': voice_service.is_active()})
+# ------------------------------------------------------------------
+# Clean shutdown
+# ------------------------------------------------------------------
+
+def _do_exit():
+    """Hard-exit the process. Safe to call from any thread."""
+    vision.stop()
+    print("[Brain] Goodbye.")
+    os._exit(0)
+
+def _shutdown(notify_rpi=True):
+    """
+    Initiate shutdown sequence.
+    If notify_rpi=True, emit 'shutdown' and wait for ack before exiting.
+    If notify_rpi=False (e.g. RPi not connected), exit immediately.
+    """
+    global _shutting_down
+    if _shutting_down:
+        return
+    _shutting_down = True
+
+    vision.stop()
+
+    if notify_rpi:
+        print("[Brain] Notifying RPi to shut down...")
+        socketio.emit('shutdown')
+        # Give RPi up to 5 seconds to ack; exit regardless after that
+        threading.Timer(5.0, _do_exit).start()
+    else:
+        _do_exit()
+
+def _handle_signal(sig, frame):
+    print(f"\n[Brain] Signal {sig} received. Shutting down...")
+    # Run shutdown in a new thread — signal handlers must return quickly
+    threading.Thread(target=_shutdown, daemon=True).start()
+
+signal.signal(signal.SIGINT,  _handle_signal)
+signal.signal(signal.SIGTERM, _handle_signal)
+
+# ------------------------------------------------------------------
+# Entry point
+# ------------------------------------------------------------------
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000, use_reloader=False)
+    vision_thread = threading.Thread(target=vision.start, daemon=True)
+    vision_thread.start()
+
+    socketio.run(app, debug=False, host='10.42.0.1', port=5000, use_reloader=False)
