@@ -8,13 +8,13 @@ class Eye:
         Initialize the Eye module.
 
         Args:
-            on_frame: callback(frame: bytes) — called with each compressed JPEG frame
+            on_frame: callback(frame: bytes) - called with each compressed JPEG frame
         """
         self.on_frame = on_frame
 
         self.camera = Picamera2()
         config = self.camera.create_video_configuration(
-            main={"size": (640, 480), "format": "RGB888"}
+            main={"size": (320, 240), "format": "RGB888"}
         )
         self.camera.configure(config)
 
@@ -29,8 +29,9 @@ class Eye:
         try:
             while self.is_running:
                 frame = self.camera.capture_array()
-                _, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+                _, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 30])
                 self.on_frame(jpeg.tobytes())
+
         except Exception as e:
             print(f"Error in Eye: {e}")
         finally:

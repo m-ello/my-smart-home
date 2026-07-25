@@ -60,7 +60,6 @@ def toggle_device(name):
     elif name == 'fan':
         mind.devices['fan'] = not mind.devices.get('fan', False)
     elif name == 'music':
-        # toggle: None/off → 'on', anything else → None
         mind.devices['music'] = 'on' if not mind.devices.get('music') else None
     socketio.emit('state', {'devices': mind.devices, 'commands': memory.get_commands()})
     return jsonify({'devices': mind.devices})
@@ -104,7 +103,7 @@ def _shutdown(notify_rpi=True):
 
 def _handle_signal(sig, frame):
     print(f"\n[Brain] Signal {sig} received. Shutting down...")
-    # Run shutdown in a new thread — signal handlers must return quickly
+    # Run shutdown in a new thread - signal handlers must return quickly
     threading.Thread(target=_shutdown, daemon=True).start()
 
 signal.signal(signal.SIGINT,  _handle_signal)

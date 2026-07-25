@@ -6,7 +6,7 @@ from ultralytics import YOLO
 
 
 class Vision:
-    def __init__(self, stream_url, memory, socketio, inactivity_timeout=20):
+    def __init__(self, stream_url, memory, socketio, inactivity_timeout=10):
         """
         Initialize the Vision module.
         Reads the MJPEG stream from the RPi, runs MOG2 + YOLOv8n per frame.
@@ -17,7 +17,7 @@ class Vision:
             stream_url:          MJPEG stream URL
             memory:              Memory instance
             socketio:            SocketIO instance
-            inactivity_timeout:  seconds of no detection before ear is deactivated (default 20)
+            inactivity_timeout:  seconds of no detection before ear is deactivated (default 10)
         """
         self.stream_url = stream_url
         self.memory = memory
@@ -102,7 +102,7 @@ class Vision:
         self.memory.set_person_present(False)
         self.socketio.emit('ear_control', {'active': False})
         self.socketio.emit('person_present', {'present': False})
-        print("[Vision] No person for 20s — ear deactivated.")
+        print("[Vision] No person for 10s — ear deactivated.")
 
     # ------------------------------------------------------------------
     # Main loop
@@ -136,7 +136,7 @@ class Vision:
                     if self._person_in_frame(frame):
                         self._activate_ear()
                     else:
-                        # Motion detected but no person — start/reset deactivation timer
+                        # Motion detected but no person - start/reset deactivation timer
                         if self._ear_active:
                             self._schedule_deactivation()
 

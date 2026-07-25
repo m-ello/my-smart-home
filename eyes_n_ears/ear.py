@@ -15,8 +15,9 @@ class Ear:
     def process_command(self, text):
         """Process recognized text only if wake word is present."""
         text = text.lower().strip()
+        words = text.split()
 
-        if self.wake_word not in text:
+        if not words or words[0] != self.wake_word:
             return None
 
         for phrase, command in self.COMMANDS.items():

@@ -1,7 +1,7 @@
 """
 simulate.py — RPi simulator for brain UI development.
-Connects to the brain via Socket.IO and lets you fire commands,
-toggle person presence, and stream a fake MJPEG feed,
+Connects to the brain via Socket.IO and lets you send commands
+and toggle person presence
 all without the actual RPi4 running.
 
 Usage:
@@ -17,7 +17,7 @@ import time
 # Config
 # ------------------------------------------------------------------
 
-BRAIN_URL = "http://localhost:5000"
+BRAIN_URL = "http://10.42.0.1:5000"
 
 COMMANDS = {
     "w": ("lights on",  "LIGHTS_ON"),
@@ -54,20 +54,18 @@ def connect_error(data):
 def on_state(data):
     devices = data.get('devices', {})
     count   = data.get('count', 0)
-    print(f"[Sim] Brain state → devices={devices}  command_count={count}")
+    print(f"[Sim] Brain state -> devices={devices}  command_count={count}")
 
-# ------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------
 
 def print_menu():
-    print("\n┌─────────────────────────────────────┐")
-    print("│         RPi Simulator               │")
-    print("├─────────────────────────────────────┤")
+    print("\n######################################")
+    print("#         RPi Simulator              #")
+    print("######################################")
     for key, (label, _) in COMMANDS.items():
-        print(f"│  [{key}] {label:<33}│")
-    print("│  [q] quit                           │")
-    print("└─────────────────────────────────────┘")
+        print(f"#   [{key}] {label:<29}#")
+    print("#   [0] quit                         #")
+    print("######################################")
+
 
 def send_command(text, command):
     if not sio.connected:
@@ -76,6 +74,7 @@ def send_command(text, command):
     payload = {'text': text, 'command': command}
     sio.emit('command', payload)
     print(f"[Sim] Sent command: {command}  (text='{text}')")
+
 
 def send_ear_control(active: bool):
     if not sio.connected:
@@ -86,14 +85,11 @@ def send_ear_control(active: bool):
     state = "ON" if active else "OFF"
     print(f"[Sim] Sent ear_control={state} + person_present={active}")
 
-# ------------------------------------------------------------------
-# Input loop (runs in main thread)
-# ------------------------------------------------------------------
 
 def input_loop():
     while True:
         try:
-            key = input("\n> ").strip().lower()
+            key = input("> ")
         except (EOFError, KeyboardInterrupt):
             break
 
@@ -117,9 +113,6 @@ def input_loop():
     if sio.connected:
         sio.disconnect()
 
-# ------------------------------------------------------------------
-# Entry point
-# ------------------------------------------------------------------
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

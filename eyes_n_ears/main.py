@@ -9,17 +9,17 @@ from nerve import Nerve
 
 BRAIN_URL = "http://10.42.0.1:5000"
 MJPEG_PORT = 8000
-WAKE_WORD = "siri"
+WAKE_WORD = "chip"
 
 COMMANDS = {
-
-    "lights on":  "LIGHTS_ON",
-    "lights off": "LIGHTS_OFF",
-    "fan on":     "FAN_ON",
-    "fan off":    "FAN_OFF",
-    "music on":   "MUSIC_ON",
-    "pause music":"PAUSE_MUSIC",
-    "music off":  "MUSIC_OFF"
+    "lights on":   "LIGHTS_ON",
+    "lights off":  "LIGHTS_OFF",
+    "fan on":      "FAN_ON",
+    "fan off":     "FAN_OFF",
+    "music on":    "MUSIC_ON",
+    "pause music": "PAUSE_MUSIC",
+    "music off":   "MUSIC_OFF",
+    "shut down":   "SHUTDOWN",
 }
 
 # ------------------------------------------------------------------
@@ -37,9 +37,8 @@ def main():
 
     eye = Eye(on_frame=nerve.send_frame)
 
-    # Ear is controlled by the brain via Socket.IO
-    # brain/vision.py emits 'ear_control' when occupancy changes
     ear_thread = None
+
     @nerve.sio.on('ear_control')
     def handle_ear_control(data):
         nonlocal ear_thread
@@ -51,7 +50,17 @@ def main():
             ear_thread.start()
         elif not active and ear.is_listening:
             print("[Main] Brain deactivated ear.")
-            ear.is_listening = False
+            ear.stop()
+
+    @nerve.sio.on('shutdown')
+    def handle_shutdown():
+        """Brain is telling us to shut down."""
+        print("[Main] Shutdown signal from brain. Stopping...")
+        eye.stop()
+        ear.stop()
+        # Acknowledge so the brain knows it can exit too
+        nerve.sio.emit('shutdown_ack')
+        nerve.stop()
 
     nerve.start()
 
@@ -62,13 +71,13 @@ def main():
 
     try:
         eye_thread.join()
-        ear_thread.join()
     except KeyboardInterrupt:
-        print("\n[Main] Shutting down...")
+        print("\n[Main] Ctrl+C received. Shutting down...")
         eye.stop()
         ear.stop()
         nerve.stop()
-        print("[Main] Goodbye.")
+
+    print("[Main] Goodbye.")
 
 
 if __name__ == "__main__":

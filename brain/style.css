@@ -2,7 +2,7 @@
    Variables
 ------------------------------------------------------------------ */
 :root {
-    --bg:         #eff6f5;
+    --bg:         #eff4f6;
     --panel:      #ffffff;
     --border:     #d8e6e5;
 
@@ -131,10 +131,10 @@ body {
     letter-spacing: 0.2em;
     background: repeating-linear-gradient(
         45deg,
-        #f4f2ee,
-        #f4f2ee 6px,
-        #eeeae3 6px,
-        #eeeae3 12px
+        #eef2f4,
+        #eef1f4 6px,
+        #e3e8ee 6px,
+        #e3e8ee 12px
     );
 }
 

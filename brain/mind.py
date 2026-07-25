@@ -4,20 +4,20 @@ class Mind:
         Initialize the Mind module.
 
         Args:
-            memory:   Memory instance — shared state store
-            socketio: SocketIO instance — for emitting UI updates
+            memory:   Memory instance - shared state store
+            socketio: SocketIO instance - for emitting UI updates
         """
         self.memory = memory
         self.socketio = socketio
 
-        # Device state — extend this as you add more devices
+        # Device state - extend this as you add more devices
         self.devices = {
             'lights': False,
             'fan':    False,
             'music':  None,  # 'playing', 'paused', or None
         }
 
-        # Command dispatcher — maps command codes to handler methods
+        # Command dispatcher - maps command codes to handler methods
         self._handlers = {
             'LIGHTS_ON':    self._lights_on,
             'LIGHTS_OFF':   self._lights_off,
@@ -50,7 +50,7 @@ class Mind:
             print(f"[Mind] Unknown command: {command}")
 
         # Store in memory and broadcast updated state to UI
-        # (skip logging SHUTDOWN — it's transient)
+        # (skip logging SHUTDOWN - it's transient)
         if command != 'SHUTDOWN':
             commands = self.memory.add_command(payload)
             self._emit_state(commands)

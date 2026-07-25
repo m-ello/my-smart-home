@@ -1,6 +1,6 @@
 import socketio
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import time
 
 
@@ -12,6 +12,7 @@ class _MJPEGHandler(BaseHTTPRequestHandler):
     """Handles a single MJPEG client connection."""
 
     def do_GET(self):
+        print(f"Client connected: {self.client_address}")
         if self.path == '/stream':
             self.send_response(200)
             self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
@@ -39,7 +40,7 @@ class _MJPEGHandler(BaseHTTPRequestHandler):
         pass  # suppress default HTTP logs
 
 
-class _MJPEGServer(HTTPServer):
+class _MJPEGServer(ThreadingHTTPServer):
     """HTTPServer subclass that holds a reference to Synapse."""
 
     def __init__(self, server_address, nerve):
@@ -106,19 +107,6 @@ class Nerve:
             print(f"[Nerve] Sent command: {payload['command']}")
         else:
             print("[Nerve] Cannot send command - not connected to brain.")
-
-    def send_count(self, occupancy):
-        """
-        Called by Eye when room occupancy changes.
-
-        Args:
-            occupancy: int, current number of people in the room
-        """
-        if self.sio.connected:
-            self.sio.emit('occupancy', {'count': occupancy})
-            print(f"[Nerve] Sent occupancy: {occupancy}")
-        else:
-            print("[Nerve] Cannot send occupancy - not connected to brain.")
 
     def send_frame(self, jpeg_bytes):
         """
