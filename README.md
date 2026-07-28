@@ -1,4 +1,4 @@
-# Smart Home — Distributed Detection & Voice System
+# Distributed Smart Home System with Presence-Gated Voice Recognition
 
 A distributed smart home system built as a bachelor's diploma project. Responsibilities are split across two nodes on a local network: a Raspberry Pi 4 handling sensing (camera + microphone) and a laptop acting as the central "brain" (state, logic, and web dashboard).
 
